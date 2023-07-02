@@ -1,0 +1,154 @@
+﻿@using BeverageVendingMachine.DTOs;
+@{
+    ViewData["Title"] = "Автомат с напитками";
+}
+@model IEnumerable<BeverageDto>
+
+
+
+<style>
+    .items {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .item {
+        flex: 30%;
+        max-width: 30%;
+    }
+</style>
+<div id="balance">Баланс: <span id="counter">0</span></div>
+<button id="coin1">1</button>
+<button id="coin2">2</button>
+<button id="coin5">5</button>
+<button id="coin10">10</button>
+
+<button id="out" onclick="outCoins()">Получить сдачу</button>
+<div class="items">
+
+    @foreach (var item in Model)
+    {
+        <div class="item-@item.Id">
+            <div class="col">
+                <img src="@item.Image" width="500" height="300" onclick="minus(@item.Price, @item.Id, @item.BeverageCount)" />
+            </div>
+            <div class="col">
+                Наименование: @item.Name 
+            </div>
+            <div class="col">
+            Количество: <span id="count-@item.Id">@item.BeverageCount</span>
+            </div>
+            <div class="col">
+                Цена: @item.Price
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    let total = 0;
+    function updateCounter() {
+        const counter = document.getElementById('counter');
+        counter.innerHTML = total;
+    }
+
+    function updateLockStatus() {
+        const coin1 = document.getElementById('coin1');
+        const coin2 = document.getElementById('coin2');
+        const coin5 = document.getElementById('coin5');
+        const coin10 = document.getElementById('coin10');
+
+    }
+
+    function handleCoinClick(coinValue) {
+        total += coinValue;
+        updateCounter();
+        if (coinValue === 1) {
+            coin1Locked = true;
+            updateLockStatus();
+        }
+        if (coinValue === 2) {
+            coin2Locked = true;
+            updateLockStatus();
+        }
+        if (coinValue === 5) {
+            coin5Locked = true;
+            updateLockStatus();
+        }
+        if (coinValue === 10) {
+            coin10Locked = true;
+            updateLockStatus();
+        }
+    }
+
+    const coin1 = document.getElementById('coin1');
+    const coin2 = document.getElementById('coin2');
+    const coin5 = document.getElementById('coin5');
+    const coin10 = document.getElementById('coin10');
+    coin1.addEventListener('click', () => handleCoinClick(1));
+    coin2.addEventListener('click', () => handleCoinClick(2));
+    coin5.addEventListener('click', () => handleCoinClick(5));
+    coin10.addEventListener('click', () => handleCoinClick(10));
+
+    updateLockStatus();
+
+    function minus(price, id, count) {
+        if (total <= 0) {
+            alert("Нельзя купить при отрицательном или 0 балансе");
+            return;
+        }
+        if (total < price) {
+            alert("Нельзя купить при балансе ниже цены");
+            return;
+        }
+
+        if (count < 1) {
+            alert("В автомате закончились напитки");
+            return;
+        }
+
+
+
+        let data = JSON.stringify(collectFields(id, 1));
+        const url = `@Url.Action("RemoveBeverage","WendingMachine")`;
+        let response;
+        $.ajax({
+            type: 'POST',
+            async: false,
+            url: url,
+            contentType: 'application/json',
+            data: data,
+            success: function (result) {
+                for(let i = 0; i < result.length; i++)
+                document.getElementById('count-' + result[i].id).innerHTML = result[i].beverageCount;
+                total -= price;
+                document.getElementById("counter").innerHTML = total;
+                alert("Покупка успешна!");
+            },
+            error: function () {
+                alert("Покупка не прошла!");
+            }
+        });
+
+    }
+
+
+    function collectFields(id, count) {
+        return {
+            '@nameof(BeverageCountDto.Id)': id,
+            '@nameof(BeverageCountDto.BeverageCount)': count,
+        }
+    }
+
+    function outCoins() {
+        console.log(total);
+        if (total == 0) {
+            alert('Вы не внесли деньги!')
+            return;
+        }
+        alert(`Ваша сдача ${total}`);
+
+        total = 0;
+        document.getElementById("counter").innerHTML = total;
+    }
+</script>

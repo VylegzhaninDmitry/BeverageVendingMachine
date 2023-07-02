@@ -1,0 +1,210 @@
+﻿@{
+    ViewData["Title"] = "Напитки";
+}
+
+@model BeverageDto
+
+<div>
+    <select id="beveragesList"></select>
+</div>
+<div class="mb-3">
+    <label asp-for="Name" class="control-label">Name</label>
+    <input type="text" asp-for="Name" class="form-control" width="50%" />
+</div>
+<div class="mb-3">
+    <label asp-for="Price" class="control-label">Price</label>
+    <input type="number" asp-for="Price" class="form-control" />
+</div>
+<div class="mb-3">
+    <label asp-for="Image" class="control-label">Image</label>
+    <input type="file" asp-for="Image" class="form-control" />
+</div>
+<div class="mb-3">
+    <label asp-for="BeverageCount" class="control-label">BeverageCount</label>
+    <input type="number" asp-for="BeverageCount" class="form-control" />
+</div>
+<div>
+    <div class="text-left" style="padding : 10px">
+        <input type="button" onclick="create()" value="Создать" class="w-50 btn btn-lg btn-success" />
+    </div>
+    <div class="text-left" style="padding : 10px">
+        <input type="button" onclick="update()" value="Обновить" class="w-50 btn btn-lg btn-primary" />
+    </div>
+    <div class="text-left" style="padding : 10px">
+        <input type="button" onclick="deleteBeverage()" value="Удалить" class="w-50 btn btn-lg btn-danger" />
+    </div>
+</div>
+
+<script>
+    var id;
+    $(function () {
+        var beveragesList = $("#beveragesList");
+        beveragesList.empty().append('<option selected="selected" value="0" disabled = "disabled">Загрузка.....</option>');
+        $.ajax({
+            url: '@Url.Action("GetBeverages", "Admin")',
+            type: 'GET',
+            data: '{}',
+            success: function (data) {
+                var options = '<option value="" selected>Выберите напиток</option>';
+                for (var i = 0; i < data.length; i++) {
+                    options += '<option value="' + data[i].id + '">' + data[i].name + '</option>';
+                }
+                $('#beveragesList').html(options);
+            }
+        });
+    });
+
+    $(function () {
+        $('#beveragesList').on('change', function () {
+            var value = $(this).val();
+            id = value;
+            if (!value) {
+                document.getElementById('Name').value = '';
+                document.getElementById('Price').value = '';
+                document.getElementById('BeverageCount').value = '';
+                return;
+            }
+            $.ajax({
+                url: '@Url.Action("GetBeverageById", "Admin")',
+                type: 'GET',
+                data: { id: value },
+                success: function (response) {
+                    document.getElementById('Name').value = response.name;
+                    document.getElementById('Price').value = response.price;
+                    document.getElementById('BeverageCount').value = response.beverageCount;
+                }
+            });
+        });
+    });
+
+    function collectFields() {
+        var beverage = {
+            '@nameof(CreateBeverageDto.Name)': $('#Name').val(),
+            '@nameof(CreateBeverageDto.BeverageCount)': Number($('#BeverageCount').val()),
+            '@nameof(CreateBeverageDto.Price)': Number($('#Price').val()),
+            '@nameof(CreateBeverageDto.Image)': null
+        };
+        const fileInput = document.getElementById('Image');
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        let bytes;
+        const promise = new Promise((resolve, reject) => {
+            reader.onload = function (event) {
+                const imageData = event.target.result;
+                const byteArray = btoa(String.fromCharCode.apply(null, new Uint8Array(imageData)));
+                beverage.Image = byteArray;
+                resolve(beverage);
+            };
+            reader.onerror = function (error) {
+                reject(error);
+            };
+        });
+        reader.readAsArrayBuffer(file);
+        return promise;
+    }
+
+    function create() {
+        const promise = collectFields();
+        promise.then((beverage) => {
+            const url = `@Url.Action("AddBeverage", "Admin")`;
+            $.ajax({
+                type: 'POST',
+                url: url,
+                contentType: 'application/json',
+                data: JSON.stringify(beverage),
+                success: function (result) {
+                    alert('Напиток добавлен');
+                    var select = document.querySelector('select');
+                    var option = document.createElement('option');
+                    option.value = result.id;
+                    option.text = result.name;
+                    select.add(option);
+                    document.getElementById('Image').value = '';
+                },
+                error: function () {
+                    alert("Не удалось добавить");
+                }
+            });
+        }).catch((error) => {
+            alert(error);
+        });
+    }
+
+
+    function collectFieldsForUpdates() {
+        var beverage = {
+            '@nameof(UpdateBeverageDto.Id)': id,
+            '@nameof(UpdateBeverageDto.Name)': $('#Name').val(),
+            '@nameof(UpdateBeverageDto.BeverageCount)': Number($('#BeverageCount').val()),
+            '@nameof(UpdateBeverageDto.Price)': Number($('#Price').val()),
+            '@nameof(UpdateBeverageDto.Image)': null
+        };
+        const fileInput = document.getElementById('Image');
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        let bytes;
+        const promise = new Promise((resolve, reject) => {
+            reader.onload = function (event) {
+                const imageData = event.target.result;
+                const byteArray = btoa(String.fromCharCode.apply(null, new Uint8Array(imageData)));
+                beverage.Image = byteArray;
+                resolve(beverage);
+            };
+            reader.onerror = function (error) {
+                reject(error);
+            };
+        });
+        reader.readAsArrayBuffer(file);
+        console.log(beverage);
+        return promise;
+    }
+
+    function update() {
+        const promise = collectFieldsForUpdates();
+        promise.then((beverage) => {
+            const url = `@Url.Action("UpdateBeverage", "Admin")`;
+            let response;
+            $.ajax({
+                type: 'POST',
+                url: url,
+                contentType: 'application/json',
+                data: JSON.stringify(beverage),
+                success: function (result) {
+                    alert('Напиток обновлен');
+                },
+                error: function () {
+                    alert("Не удалось обновить");
+                }
+            });
+        }).catch((error) => {
+            alert(error);
+        });
+    }
+
+    function deleteBeverage() {
+        const url = '@Url.Action("DeleteBeverage", "Admin")';
+        console.log({ 'id': Number(id) });
+        $.ajax({
+            type: 'GET',
+            url: url,
+            contentType: 'application/json',
+            data: { 'id': Number(id) },
+            success: function (result) {
+                if (result == true) {
+                    alert('Напиток удален');
+                    document.getElementById('Name').value = '';
+                    document.getElementById('Price').value = '';
+                    document.getElementById('BeverageCount').value = '';
+                    var entityOption = $('#beveragesList option[value="' + id + '"]');
+                    entityOption.remove();
+                }
+                else {
+                    alert('Напиток не удален');
+                }
+            },
+            error: function () {
+                alert('Не удалось удалить напиток');
+            }
+        });
+    }
+</script>
